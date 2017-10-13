@@ -237,15 +237,15 @@ enum {
 // MAC downlink commands
 enum {
     // Class A
-    MCMD_LCHK_ANS = 0x02, // link check answer  : u1:margin 0-254,255=unknown margin / u1:gwcnt
-    MCMD_LADR_REQ = 0x03, // link ADR request   : u1:DR/TXPow, u2:chmask, u1:chpage/repeat
-    MCMD_DCAP_REQ = 0x04, // duty cycle cap     : u1:255 dead [7-4]:RFU, [3-0]:cap 2^-k
-    MCMD_DN2P_SET = 0x05, // 2nd DN window param: u1:7-4:RFU/3-0:datarate, u3:freq
-    MCMD_DEVS_REQ = 0x06, // device status req  : -
-    MCMD_SNCH_REQ = 0x07, // set new channel    : u1:chidx, u3:freq, u1:DRrange
+    MCMD_LCHK_ANS = 0x02, // * link check answer  : u1:margin 0-254,255=unknown margin / u1:gwcnt
+    MCMD_LADR_REQ = 0x03, // * link ADR request   : u1:DR/TXPow, u2:chmask, u1:chpage/repeat
+    MCMD_DCAP_REQ = 0x04, // * duty cycle cap     : u1:255 dead [7-4]:RFU, [3-0]:cap 2^-k
+    MCMD_DN2P_SET = 0x05, // * 2nd DN window param: u1:7-4:RFU/3-0:datarate, u3:freq
+    MCMD_DEVS_REQ = 0x06, // * device status req  : -
+    MCMD_SNCH_REQ = 0x07, // * set new channel    : u1:chidx, u3:freq, u1:DRrange
     // Class B
-    MCMD_PING_SET = 0x11, // set ping freq      : u3: freq
-    MCMD_BCNI_ANS = 0x12, // next beacon start  : u2: delay(in TUNIT millis), u1:channel
+    MCMD_PING_SET = 0x11, // * set ping freq      : u3: freq
+    MCMD_BCNI_ANS = 0x12, // * next beacon start  : u2: delay(in TUNIT millis), u1:channel
 };
 
 enum {

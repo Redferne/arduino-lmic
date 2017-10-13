@@ -25,6 +25,10 @@ void os_init () {
     LMIC_init();
 }
 
+u1_t os_getBattLevel () {
+    return hal_get_batt_level();
+}
+
 ostime_t os_getTime () {
     return hal_ticks();
 }
@@ -102,7 +106,7 @@ void os_runloop () {
 
 void os_runloop_once() {
     #if LMIC_DEBUG_LEVEL > 1
-        bool has_deadline = false;
+      bool has_deadline = false;
     #endif
     osjob_t* j = NULL;
     hal_disableIRQs();
@@ -114,7 +118,7 @@ void os_runloop_once() {
         j = OS.scheduledjobs;
         OS.scheduledjobs = j->next;
         #if LMIC_DEBUG_LEVEL > 1
-            has_deadline = true;
+          has_deadline = true;
         #endif
     } else { // nothing pending
         hal_sleep(); // wake by irq (timer already restarted)

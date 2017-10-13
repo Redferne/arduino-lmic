@@ -325,6 +325,9 @@ static void configLoraModem () {
         case BW250: mc1 |= SX1276_MC1_BW_250; break;
         case BW500: mc1 |= SX1276_MC1_BW_500; break;
         default:
+            #if LMIC_DEBUG_LEVEL > 0
+              lmic_printf("%lu: Error BW:0x%02x RPS:0x%04x\n",os_getTime(), getBw(LMIC.rps),LMIC.rps);
+            #endif
             ASSERT(0);
         }
         switch( getCr(LMIC.rps) ) {
@@ -333,6 +336,9 @@ static void configLoraModem () {
         case CR_4_7: mc1 |= SX1276_MC1_CR_4_7; break;
         case CR_4_8: mc1 |= SX1276_MC1_CR_4_8; break;
         default:
+            #if LMIC_DEBUG_LEVEL > 0
+              lmic_printf("%lu: Error CR:0x%02x\n",os_getTime(), getCr(LMIC.rps));
+            #endif
             ASSERT(0);
         }
 
@@ -399,6 +405,8 @@ static void configChannel () {
 static void configPower () {
 #ifdef CFG_sx1276_radio
     // no boost used for now
+    if (LMIC.txpow != LMIC.adrTxPow)
+      LMIC.txpow = LMIC.adrTxPow;
     s1_t pw = (s1_t)LMIC.txpow;
     if(pw >= 17) {
         pw = 15;
@@ -411,6 +419,8 @@ static void configPower () {
 
 #elif CFG_sx1272_radio
     // set PA config (2-17 dBm using PA_BOOST)
+    if (LMIC.txpow != LMIC.adrTxPow)
+      LMIC.txpow = LMIC.adrTxPow;
     s1_t pw = (s1_t)LMIC.txpow;
     if(pw > 17) {
         pw = 17;

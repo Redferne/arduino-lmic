@@ -16,6 +16,8 @@
 extern "C"{
 #endif
 
+u1_t hal_get_batt_level(void);
+
 /*
  * initialize hardware (IO, SPI, TIMER, IRQ).
  */

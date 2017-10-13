@@ -17,6 +17,10 @@
 // -----------------------------------------------------------------------------
 // I/O
 
+u1_t hal_get_batt_level(void) {
+  return(map(pbatt, 0, 100, 1, 254));
+}
+
 static void hal_io_init () {
     // NSS and DIO0 are required, DIO1 is required for LoRa, DIO2 for FSK
     ASSERT(lmic_pins.nss != LMIC_UNUSED_PIN);
@@ -74,7 +78,7 @@ static void hal_io_check() {
 // -----------------------------------------------------------------------------
 // SPI
 
-static const SPISettings settings(10E6, MSBFIRST, SPI_MODE0);
+static const SPISettings settings(LMIC_SPI_FREQ, MSBFIRST, SPI_MODE0);
 
 static void hal_spi_init () {
     SPI.begin();
@@ -208,6 +212,8 @@ void hal_sleep () {
 // -----------------------------------------------------------------------------
 
 #if defined(LMIC_PRINTF_TO)
+#if defined(__AVR)
+// avr-libc provides an alternative (simpler) way to override STDOUT
 static int uart_putchar (char c, FILE *)
 {
     LMIC_PRINTF_TO.write(c) ;
@@ -225,6 +231,32 @@ void hal_printf_init() {
     // The uart is the standard output device STDOUT.
     stdout = &uartout ;
 }
+#else // defined(__AVR)
+// On other platforms, use the somewhat more complex "cookie"-based
+// approach to custom streams. This is a GNU-specific extension to libc.
+//static ssize_t uart_putchar (void *, const char *buf, size_t len) {
+static ssize_t uart_putchar (void *uart, const char *buf, size_t len) {
+//    return LMIC_PRINTF_TO.write(buf, len);
+    if (buf[len-1] == '\n' || buf[len] == '\n') {
+        buf[len-1] == '\r';
+        ((Uart*)uart)->write("\r", 1);
+    }
+    return ( (Uart *) uart)->write(buf, len);
+}
+
+static cookie_io_functions_t functions = {
+    .read = NULL,
+    .write = uart_putchar,
+    .seek = NULL,
+    .close = NULL
+};
+
+void hal_printf_init() {
+//    stdout = fopencookie(NULL, "w", functions);
+    if ((stdout = fopencookie (&LMIC_PRINTF_TO, "w", functions)))
+        setvbuf (stdout, NULL, _IONBF, 0);
+}
+#endif // !defined(__AVR)
 #endif // defined(LMIC_PRINTF_TO)
 
 void hal_init () {

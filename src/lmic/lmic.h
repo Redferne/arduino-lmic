@@ -140,7 +140,8 @@ enum _ev_t { EV_SCAN_TIMEOUT=1, EV_BEACON_FOUND,
              EV_BEACON_MISSED, EV_BEACON_TRACKED, EV_JOINING,
              EV_JOINED, EV_RFU1, EV_JOIN_FAILED, EV_REJOIN_FAILED,
              EV_TXCOMPLETE, EV_LOST_TSYNC, EV_RESET,
-             EV_RXCOMPLETE, EV_LINK_DEAD, EV_LINK_ALIVE };
+             EV_RXCOMPLETE, EV_LINK_DEAD, EV_LINK_ALIVE, EV_OP_MODE,
+             EV_TX_DONE, EV_RX1_DONE, EV_BUILD_TX};
 typedef enum _ev_t ev_t;
 
 enum {
@@ -168,6 +169,7 @@ struct lmic_t {
     u4_t        channelFreq[MAX_CHANNELS];
     u2_t        channelDrMap[MAX_CHANNELS];
     u2_t        channelMap;
+    u2_t        enabledChannels;
 #elif defined(CFG_us915)
     u4_t        xchFreq[MAX_XCHANNELS];    // extra channel frequencies (if device is behind a repeater)
     u2_t        xchDrMap[MAX_XCHANNELS];   // extra channel datarate ranges  ---XXX: ditto
@@ -206,17 +208,23 @@ struct lmic_t {
     u4_t        seqnoDn;      // device level down stream seqno
     u4_t        seqnoUp;
 
+    u4_t        mcmd;         // Last MAC command
+
     u1_t        dnConf;       // dn frame confirm pending: LORA::FCT_ACK or 0
     s1_t        adrAckReq;    // counter until we reset data rate (0=off)
     u1_t        adrChanged;
 
     u1_t        rxDelay;      // Rx delay after TX
-    
+
     u1_t        margin;
     bit_t       ladrAns;      // link adr adapt answer pending
     bit_t       devsAns;      // device status answer pending
     u1_t        adrEnabled;
     u1_t        moreData;     // NWK has more data pending
+
+    bit_t       lchkReq;      // Send lCheckReq MAC command
+    u1_t        gwMargin;     // Gateway margin    (lcheckAns)
+    u1_t        nGws;         // Number of gateways (lcheckAns)
 #if !defined(DISABLE_MCMD_DCAP_REQ)
     bit_t       dutyCapAns;   // have to ACK duty cycle settings
 #endif
@@ -265,6 +273,7 @@ DECLARE_LMIC; //!< \internal
 #if defined(CFG_eu868)
 enum { BAND_MILLI=0, BAND_CENTI=1, BAND_DECI=2, BAND_AUX=3 };
 bit_t LMIC_setupBand (u1_t bandidx, s1_t txpow, u2_t txcap);
+void LMIC_initDefaultChannels (bit_t join);
 #endif
 bit_t LMIC_setupChannel (u1_t channel, u4_t freq, u2_t drmap, s1_t band);
 void  LMIC_disableChannel (u1_t channel);
@@ -302,9 +311,11 @@ void  LMIC_setPingable   (u1_t intvExp);
 void  LMIC_tryRejoin     (void);
 #endif
 
+void LMIC_stateJustJoined (void);
 void LMIC_setSession (u4_t netid, devaddr_t devaddr, xref2u1_t nwkKey, xref2u1_t artKey);
 void LMIC_setLinkCheckMode (bit_t enabled);
 void LMIC_setClockError(u2_t error);
+void LMIC_setLinkCheckRequestOnce (bit_t enabled);
 
 // Declare onEvent() function, to make sure any definition will have the
 // C conventions, even when in a C++ file.
