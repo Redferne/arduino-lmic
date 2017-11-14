@@ -10,6 +10,8 @@
 #ifndef _hal_hal_h_
 #define _hal_hal_h_
 
+//#include <Adafruit_SleepyDog.h>
+
 static const int NUM_DIO = 3;
 
 struct lmic_pinmap {
@@ -26,5 +28,8 @@ const u1_t LMIC_UNUSED_PIN = 0xff;
 extern const lmic_pinmap lmic_pins;
 
 extern uint8_t pbatt;
+
+extern bool lmic_idle;
+extern uint32_t total_slept_us;
 
 #endif // _hal_hal_h_

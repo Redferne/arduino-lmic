@@ -58,6 +58,11 @@ void hal_disableIRQs (void);
 void hal_enableIRQs (void);
 
 /*
+ * not possible to sleep until brooklyn.
+ */
+void hal_awake (void);
+
+/*
  * put system and CPU in low-power mode, sleep until interrupt.
  */
 void hal_sleep (void);
@@ -71,6 +76,12 @@ u4_t hal_ticks (void);
  * busy-wait until specified timestamp (in ticks) is reached.
  */
 void hal_waitUntil (u4_t time);
+
+/*
+ * Returns the number of ticks until time. Negative values indicate that
+ * time has already passed.
+ */
+s4_t hal_deltaTime (u4_t time);
 
 /*
  * check and rewind timer for target time.

@@ -14,6 +14,11 @@
 #include "hal.h"
 #include <stdio.h>
 
+#include <LowPower.h>
+//#include <interrupt.h>
+
+//#define Serial SerialUSB
+
 // -----------------------------------------------------------------------------
 // I/O
 
@@ -33,7 +38,7 @@ static void hal_io_init () {
     if (lmic_pins.rst != LMIC_UNUSED_PIN)
         pinMode(lmic_pins.rst, OUTPUT);
 
-    pinMode(lmic_pins.dio[0], INPUT);
+    pinMode(lmic_pins.dio[0], INPUT); // was ok INPUT_PULLDOWN
     if (lmic_pins.dio[1] != LMIC_UNUSED_PIN)
         pinMode(lmic_pins.dio[1], INPUT);
     if (lmic_pins.dio[2] != LMIC_UNUSED_PIN)
@@ -59,8 +64,26 @@ void hal_pin_rst (u1_t val) {
     }
 }
 
+#if defined(LMIC_INTERRUPTS)
+bool dio_irq[NUM_DIO] = {0};
+static void hal_irq_check() {
+    uint8_t i;
+    for (i = 0; i < NUM_DIO; ++i) {
+        if (lmic_pins.dio[i] == LMIC_UNUSED_PIN)
+            continue;
+        if (dio_irq[i]) {
+            dio_irq[i] = false;
+            #ifdef LMIC_PRINTF_TO
+            LMIC_PRINTF_TO.print(F("I"));
+            LMIC_PRINTF_TO.println(i);
+            #endif
+            radio_irq_handler(i);
+//            digitalWrite(LED_BUILTIN, 0);
+        }
+    }
+}
+#else
 static bool dio_states[NUM_DIO] = {0};
-
 static void hal_io_check() {
     uint8_t i;
     for (i = 0; i < NUM_DIO; ++i) {
@@ -74,7 +97,7 @@ static void hal_io_check() {
         }
     }
 }
-
+#endif
 // -----------------------------------------------------------------------------
 // SPI
 
@@ -90,27 +113,45 @@ void hal_pin_nss (u1_t val) {
     else
         SPI.endTransaction();
 
-    //Serial.println(val?">>":"<<");
     digitalWrite(lmic_pins.nss, val);
 }
 
 // perform SPI transaction with radio
 u1_t hal_spi (u1_t out) {
     u1_t res = SPI.transfer(out);
-/*
-    Serial.print(">");
-    Serial.print(out, HEX);
-    Serial.print("<");
-    Serial.println(res, HEX);
-    */
     return res;
 }
+
+// -----------------------------------------------------------------------------
+// INTERRUPTS
+
+#if defined(LMIC_INTERRUPTS)
+void hal_dio0_irq_handler(void) {
+//    digitalWrite(LED_BUILTIN, 1);
+    dio_irq[0] = true;
+}
+void hal_dio1_irq_handler(void) {
+//    digitalWrite(LED_BUILTIN, 1);
+    dio_irq[1] = true;
+}
+void hal_dio2_irq_handler(void) {
+//   digitalWrite(LED_BUILTIN, 1);
+    dio_irq[2] = true;
+}
+#endif
 
 // -----------------------------------------------------------------------------
 // TIME
 
 static void hal_time_init () {
-    // Nothing to do
+#if defined(LMIC_INTERRUPTS)
+    if (lmic_pins.dio[0] != LMIC_UNUSED_PIN)
+        attachInterrupt(lmic_pins.dio[0], hal_dio0_irq_handler, RISING);
+    if (lmic_pins.dio[1] != LMIC_UNUSED_PIN)
+        attachInterrupt(lmic_pins.dio[1], hal_dio1_irq_handler, RISING);
+    if (lmic_pins.dio[2] != LMIC_UNUSED_PIN)
+        attachInterrupt(lmic_pins.dio[2], hal_dio2_irq_handler, RISING);
+#endif
 }
 
 u4_t hal_ticks () {
@@ -137,7 +178,7 @@ u4_t hal_ticks () {
 
     // Scaled down timestamp. The top US_PER_OSTICK_EXPONENT bits are 0,
     // the others will be the lower bits of our return value.
-    uint32_t scaled = micros() >> US_PER_OSTICK_EXPONENT;
+    uint32_t scaled = (micros() + total_slept_us) >> US_PER_OSTICK_EXPONENT;
     // Most significant byte of scaled
     uint8_t msb = scaled >> 24;
     // Mask pointing to the overlapping bit in msb and overflow.
@@ -160,12 +201,77 @@ u4_t hal_ticks () {
 
 // Returns the number of ticks until time. Negative values indicate that
 // time has already passed.
-static s4_t delta_time(u4_t time) {
+s4_t hal_deltaTime(u4_t time) {
     return (s4_t)(time - hal_ticks());
 }
 
 void hal_waitUntil (u4_t time) {
-    s4_t delta = delta_time(time);
+  s4_t delta = hal_deltaTime(time);
+  #ifdef LMIC_PRINTF_TO
+  LMIC_PRINTF_TO.print("wait: ");
+  LMIC_PRINTF_TO.println(delta * US_PER_OSTICK);
+  #endif
+  #if 0
+  LMIC_PRINTF_TO.print("wait: ");
+  LMIC_PRINTF_TO.println(delta * US_PER_OSTICK);
+  s4_t delta2 = delta * US_PER_OSTICK;
+  int mills = (delta * US_PER_OSTICK) / 1000;
+  int mills2 = mills;
+  int slept = 0;
+  int totalslept = 0;
+  int cnt = 0;
+  int panic = 0;
+  if (mills > 1) {
+    digitalWrite(LED_BUILTIN, 1);
+    uint32_t tick = millis();
+//    Disable_global_interrupt();
+    while (totalslept + 3 < mills) {
+      slept = Watchdog.sleep(mills-totalslept);
+      if (Watchdog.slept) {
+        cnt++;
+        totalslept += slept;
+      } else {
+        panic = 1;
+        break;
+      }
+    }
+    Watchdog.disable();
+//    Enable_global_interrupt();
+    tick = millis() - tick;
+    delta -= ((totalslept * 1000) / US_PER_OSTICK);
+    LMIC_PRINTF_TO.print(F("O: "));
+    LMIC_PRINTF_TO.print(delta2);
+    LMIC_PRINTF_TO.print(F(" M: "));
+    LMIC_PRINTF_TO.print(mills2);
+    LMIC_PRINTF_TO.print(F(" S: "));
+    LMIC_PRINTF_TO.print(totalslept);
+    LMIC_PRINTF_TO.print(F(" C: "));
+    LMIC_PRINTF_TO.print(cnt);
+    LMIC_PRINTF_TO.print(F(" R: "));
+    LMIC_PRINTF_TO.print(delta);
+    LMIC_PRINTF_TO.print(F(" T: "));
+    LMIC_PRINTF_TO.print(tick);
+    LMIC_PRINTF_TO.print(F(" P: "));
+    LMIC_PRINTF_TO.println(panic);
+    delay(5000);
+    LMIC_PRINTF_TO.println();
+//    LMIC_PRINTF_TO.flush();
+    total_slept_us += totalslept * 1000;
+    digitalWrite(LED_BUILTIN, 0);
+  }
+  #endif
+  // Use "regular" sleep
+  while (delta > (16000 / US_PER_OSTICK)) {
+      delay(16);
+      delta -= (16000 / US_PER_OSTICK);
+  }
+  if (delta > 0)
+      delayMicroseconds(delta * US_PER_OSTICK);
+
+    #if 0
+    s4_t delta = hal_deltaTime(time);
+    LMIC_PRINTF_TO.print(F("hal_waitUNtil: "));
+    LMIC_PRINTF_TO.println(delta * US_PER_OSTICK);
     // From delayMicroseconds docs: Currently, the largest value that
     // will produce an accurate delay is 16383.
     while (delta > (16000 / US_PER_OSTICK)) {
@@ -174,25 +280,31 @@ void hal_waitUntil (u4_t time) {
     }
     if (delta > 0)
         delayMicroseconds(delta * US_PER_OSTICK);
+    #endif
 }
 
 // check and rewind for target time
 u1_t hal_checkTimer (u4_t time) {
-    // No need to schedule wakeup, since we're not sleeping
-    return delta_time(time) <= 0;
+    // os_runloop_once will take care of sleeping (if supported)
+    return hal_deltaTime(time) <= 0;
 }
 
 static uint8_t irqlevel = 0;
 
 void hal_disableIRQs () {
-    noInterrupts();
+//    LMIC_PRINTF_TO.println(F("hal_irq: 0"));
+//    noInterrupts();
     irqlevel++;
 }
 
 void hal_enableIRQs () {
     if(--irqlevel == 0) {
-        interrupts();
+//        LMIC_PRINTF_TO.println(F("hal_irq: 1"));
+//        interrupts();
 
+#if defined(LMIC_INTERRUPTS)
+        hal_irq_check();
+#else
         // Instead of using proper interrupts (which are a bit tricky
         // and/or not available on all pins on AVR), just poll the pin
         // values. Since os_runloop disables and re-enables interrupts,
@@ -202,11 +314,20 @@ void hal_enableIRQs () {
         // As an additional bonus, this prevents the can of worms that
         // we would otherwise get for running SPI transfers inside ISRs
         hal_io_check();
+#endif
     }
 }
 
+void hal_awake () {
+#if defined(LMIC_INTERRUPTS)
+    lmic_idle = false;
+#endif
+}
+
 void hal_sleep () {
-    // Not implemented
+#if defined(LMIC_INTERRUPTS)
+    lmic_idle = true;
+#endif
 }
 
 // -----------------------------------------------------------------------------
@@ -236,12 +357,26 @@ void hal_printf_init() {
 // approach to custom streams. This is a GNU-specific extension to libc.
 //static ssize_t uart_putchar (void *, const char *buf, size_t len) {
 static ssize_t uart_putchar (void *uart, const char *buf, size_t len) {
+    const char ret[2] = {'\r','\n'};
+    if (*buf == '\n')
+      return ((Uart*)uart)->write(ret, 2);
+    else
+      return ((Uart*)uart)->write(buf, len);
+
 //    return LMIC_PRINTF_TO.write(buf, len);
+    #if 0
+    ((Uart*)uart)->flush();
     if (buf[len-1] == '\n' || buf[len] == '\n') {
         buf[len-1] == '\r';
         ((Uart*)uart)->write("\r", 1);
     }
-    return ( (Uart *) uart)->write(buf, len);
+    #endif
+//    ( (Uart *) uart)->write("\r", 1);
+//    ssize_t wrt = ( (Uart *) uart)->write(buf, len);
+//    wrt++;
+//    return wrt;
+//    return ( (Uart *) uart)->write(buf, len);
+//    return ( (Uart *) uart)->write(buf, len);
 }
 
 static cookie_io_functions_t functions = {
@@ -279,7 +414,17 @@ void hal_failed (const char *file, u2_t line) {
     LMIC_FAILURE_TO.print(':');
     LMIC_FAILURE_TO.println(line);
     LMIC_FAILURE_TO.flush();
+    delay(100);
 #endif
     hal_disableIRQs();
-    while(1);
+    #if defined(LMIC_FAILURE_TO)
+    bool sos;
+    while(1) {
+      sos != sos;
+      digitalWrite(LED_BUILTIN, sos);
+      delay(100);
+    }
+    #else
+    LowPower.standby();
+    #endif
 }

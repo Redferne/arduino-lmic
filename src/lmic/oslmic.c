@@ -67,7 +67,8 @@ void os_setCallback (osjob_t* job, osjobcb_t cb) {
     for(pnext=&OS.runnablejobs; *pnext; pnext=&((*pnext)->next));
     *pnext = job;
     hal_enableIRQs();
-    #if LMIC_DEBUG_LEVEL > 1
+    #if defined(LMIC_DEBUG_LEVEL)
+//    #if LMIC_DEBUG_LEVEL > 1
         lmic_printf("%lu: Scheduled job %p, cb %p ASAP\n", os_getTime(), job, cb);
     #endif
 }
@@ -92,7 +93,8 @@ void os_setTimedCallback (osjob_t* job, ostime_t time, osjobcb_t cb) {
     }
     *pnext = job;
     hal_enableIRQs();
-    #if LMIC_DEBUG_LEVEL > 1
+//    #if LMIC_DEBUG_LEVEL > 1
+    #if defined(LMIC_DEBUG_LEVEL)
         lmic_printf("%lu: Scheduled job %p, cb %p at %lu\n", os_getTime(), job, cb, time);
     #endif
 }
@@ -104,30 +106,39 @@ void os_runloop () {
     }
 }
 
-void os_runloop_once() {
-    #if LMIC_DEBUG_LEVEL > 1
+int32_t os_runloop_once() {
+    #if defined(LMIC_DEBUG_LEVEL)
+//    #if LMIC_DEBUG_LEVEL > 1
       bool has_deadline = false;
     #endif
     osjob_t* j = NULL;
+    int32_t delta = 0;
     hal_disableIRQs();
     // check for runnable jobs
     if(OS.runnablejobs) {
+        hal_awake(); // no sleep to brooklyn
         j = OS.runnablejobs;
         OS.runnablejobs = j->next;
-    } else if(OS.scheduledjobs && hal_checkTimer(OS.scheduledjobs->deadline)) { // check for expired timed jobs
-        j = OS.scheduledjobs;
-        OS.scheduledjobs = j->next;
-        #if LMIC_DEBUG_LEVEL > 1
-          has_deadline = true;
-        #endif
+    } else if (OS.scheduledjobs) {
+        // check for expired timed jobs
+        if ((delta = hal_deltaTime(OS.scheduledjobs->deadline)) <= 0 ) {
+          j = OS.scheduledjobs;
+          OS.scheduledjobs = j->next;
+          #if defined(LMIC_DEBUG_LEVEL)
+  //        #if LMIC_DEBUG_LEVEL > 1
+            has_deadline = true;
+          #endif
+        }
     } else { // nothing pending
-        hal_sleep(); // wake by irq (timer already restarted)
+        hal_sleep(); // possible to wake by irq (timer already restarted)
     }
     hal_enableIRQs();
     if(j) { // run job callback
-        #if LMIC_DEBUG_LEVEL > 1
+        #if defined(LMIC_DEBUG_LEVEL)
+//        #if LMIC_DEBUG_LEVEL > 1
             lmic_printf("%lu: Running job %p, cb %p, deadline %lu\n", os_getTime(), j, j->func, has_deadline ? j->deadline : 0);
         #endif
         j->func(j);
     }
+    return (delta * US_PER_OSTICK);
 }

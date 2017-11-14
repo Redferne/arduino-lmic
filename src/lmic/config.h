@@ -22,12 +22,16 @@
 
 #define LMIC_SPI_FREQ 10E6
 
+// Set this to 1 to enable some interrupts, DIO0,1,2 must be connected
+// to interrupt capable pins on your AVR/ARM.
+#define LMIC_INTERRUPTS 1
+
 // Set this to 1 to enable some basic debug output (using printf) about
 // RF settings used during transmission and reception. Set to 2 to
 // enable more verbose output. Make sure that printf is actually
 // configured (e.g. on AVR it is not by default), otherwise using it can
 // cause crashing.
-//#define LMIC_DEBUG_LEVEL 1
+//#define LMIC_DEBUG_LEVEL 3
 
 // Enable this to allow using printf() to print to the given serial port
 // (or any other Print object). This can be easy for debugging. The

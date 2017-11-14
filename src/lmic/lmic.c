@@ -655,7 +655,8 @@ static void updateTx (ostime_t txbeg) {
     if( LMIC.globalDutyRate != 0 )
         LMIC.globalDutyAvail = txbeg + (airtime<<LMIC.globalDutyRate);
     #if LMIC_DEBUG_LEVEL > 1
-        lmic_printf("%lu: Updating info for TX at %lu, airtime will be %lu. Setting available time for band %d to %lu\n", os_getTime(), txbeg, airtime, freq & 0x3, band->avail);
+//        lmic_printf("%lu: Updating info fo TX at %lu, airtime will be %lu. Setting available time for band %d to %lu\n", os_getTime(), txbeg, airtime, freq & 0x3, band->avail);
+        lmic_printf("%lu: TX at %lu airtime: %lu band: %d time: %lu\n", os_getTime(), txbeg, airtime, freq & 0x3, band->avail);
         if( LMIC.globalDutyRate != 0 )
             lmic_printf("%lu: Updating global duty avail to %lu\n", os_getTime(), LMIC.globalDutyAvail);
     #endif
@@ -2218,9 +2219,10 @@ static void engineUpdate (void) {
             LMIC.rps    = setCr(updr2rps(txdr), (cr_t)LMIC.errcr);
             LMIC.dndr   = txdr;  // carry TX datarate (can be != LMIC.datarate) over to txDone/setupRx1
             LMIC.opmode = (LMIC.opmode & ~(OP_POLL|OP_RNDTX)) | OP_TXRXPEND | OP_NEXTCHNL;
-            #if LMIC_DEBUG_LEVEL > 2
-                lmic_printf("%lu: updateTX datarate: 0x%02x updr: 0x%04x RPS: 0x%04x\n", os_getTime(), txdr, updr2rps(txdr), LMIC.rps);
+/*            #if LMIC_DEBUG_LEVEL > 2
+                lmic_printf("%lu: updateTX dr: 0x%02x RPS: 0x%04x\n", os_getTime(), txdr, LMIC.rps);
             #endif
+*/
             updateTx(txbeg);
             os_radio(RADIO_TX);
             return;
