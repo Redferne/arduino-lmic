@@ -14,11 +14,6 @@
 #include "hal.h"
 #include <stdio.h>
 
-#include <LowPower.h>
-//#include <interrupt.h>
-
-//#define Serial SerialUSB
-
 #ifdef LMIC_DEBUG_LEVEL
 #pragma message "LMIC DEBUG ENABLED"
 #endif
@@ -436,7 +431,6 @@ void hal_failed (const char *file, u2_t line) {
       delay(100);
     }
     #else
-    #if defined(__arm__)
     #pragma message "SOS enabled!"
     bool sos;
     while(1) {
@@ -444,9 +438,5 @@ void hal_failed (const char *file, u2_t line) {
       digitalWrite(3, sos);
       delay(100);
     }
-//    LowPower.standby();
-    #else
-    LowPower.powerDown(SLEEP_FOREVER, ADC_OFF, BOD_OFF);
-    #endif
     #endif
 }

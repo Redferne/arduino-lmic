@@ -2221,10 +2221,9 @@ static void engineUpdate (void) {
             LMIC.rps    = setCr(updr2rps(txdr), (cr_t)LMIC.errcr);
             LMIC.dndr   = txdr;  // carry TX datarate (can be != LMIC.datarate) over to txDone/setupRx1
             LMIC.opmode = (LMIC.opmode & ~(OP_POLL|OP_RNDTX)) | OP_TXRXPEND | OP_NEXTCHNL;
-/*            #if LMIC_DEBUG_LEVEL > 2
+            #if LMIC_DEBUG_LEVEL > 2
                 lmic_printf("%lu: updateTX dr: 0x%02x RPS: 0x%04x\n", os_getTime(), txdr, LMIC.rps);
             #endif
-*/
             updateTx(txbeg);
             os_radio(RADIO_TX);
             return;
