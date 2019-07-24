@@ -19,11 +19,16 @@
 
 //#define Serial SerialUSB
 
+#ifdef LMIC_DEBUG_LEVEL
+#pragma message "LMIC DEBUG ENABLED"
+#endif
+
+
 // -----------------------------------------------------------------------------
 // I/O
 
 u1_t hal_get_batt_level(void) {
-  return(map(pbatt, 0, 100, 1, 254));
+  return(map(batt_pcnt, 0, 100, 1, 254));
 }
 
 static void hal_io_init () {
@@ -73,6 +78,7 @@ static void hal_irq_check() {
             continue;
         if (dio_irq[i]) {
             dio_irq[i] = false;
+            hal_awake();
             #ifdef LMIC_PRINTF_TO
             LMIC_PRINTF_TO.print(F("I"));
             LMIC_PRINTF_TO.println(i);
@@ -127,11 +133,11 @@ u1_t hal_spi (u1_t out) {
 
 #if defined(LMIC_INTERRUPTS)
 void hal_dio0_irq_handler(void) {
-//    digitalWrite(LED_BUILTIN, 1);
+//    digitalWrite(3, false);
     dio_irq[0] = true;
 }
 void hal_dio1_irq_handler(void) {
-//    digitalWrite(LED_BUILTIN, 1);
+//    digitalWrite(3, false);
     dio_irq[1] = true;
 }
 void hal_dio2_irq_handler(void) {
@@ -178,7 +184,11 @@ u4_t hal_ticks () {
 
     // Scaled down timestamp. The top US_PER_OSTICK_EXPONENT bits are 0,
     // the others will be the lower bits of our return value.
+    #ifdef LMIC_ADVANCE_MILLIS
     uint32_t scaled = (micros() + total_slept_us) >> US_PER_OSTICK_EXPONENT;
+    #else
+    uint32_t scaled = micros() >> US_PER_OSTICK_EXPONENT;
+    #endif
     // Most significant byte of scaled
     uint8_t msb = scaled >> 24;
     // Mask pointing to the overlapping bit in msb and overflow.
@@ -207,13 +217,14 @@ s4_t hal_deltaTime(u4_t time) {
 
 void hal_waitUntil (u4_t time) {
   s4_t delta = hal_deltaTime(time);
+  if (delta < 0) {
+    return;
+  }
   #ifdef LMIC_PRINTF_TO
-  LMIC_PRINTF_TO.print("wait: ");
+  LMIC_PRINTF_TO.print("W: ");
   LMIC_PRINTF_TO.println(delta * US_PER_OSTICK);
   #endif
   #if 0
-  LMIC_PRINTF_TO.print("wait: ");
-  LMIC_PRINTF_TO.println(delta * US_PER_OSTICK);
   s4_t delta2 = delta * US_PER_OSTICK;
   int mills = (delta * US_PER_OSTICK) / 1000;
   int mills2 = mills;
@@ -425,6 +436,17 @@ void hal_failed (const char *file, u2_t line) {
       delay(100);
     }
     #else
-    LowPower.standby();
+    #if defined(__arm__)
+    #pragma message "SOS enabled!"
+    bool sos;
+    while(1) {
+      sos != sos;
+      digitalWrite(3, sos);
+      delay(100);
+    }
+//    LowPower.standby();
+    #else
+    LowPower.powerDown(SLEEP_FOREVER, ADC_OFF, BOD_OFF);
+    #endif
     #endif
 }

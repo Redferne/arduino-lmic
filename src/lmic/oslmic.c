@@ -66,6 +66,7 @@ void os_setCallback (osjob_t* job, osjobcb_t cb) {
     // add to end of run queue
     for(pnext=&OS.runnablejobs; *pnext; pnext=&((*pnext)->next));
     *pnext = job;
+    hal_awake(); // no sleep to brooklyn
     hal_enableIRQs();
     #if defined(LMIC_DEBUG_LEVEL)
 //    #if LMIC_DEBUG_LEVEL > 1
@@ -115,13 +116,14 @@ int32_t os_runloop_once() {
     int32_t delta = 0;
     hal_disableIRQs();
     // check for runnable jobs
-    if(OS.runnablejobs) {
+    if (OS.runnablejobs) {
         hal_awake(); // no sleep to brooklyn
         j = OS.runnablejobs;
         OS.runnablejobs = j->next;
     } else if (OS.scheduledjobs) {
         // check for expired timed jobs
         if ((delta = hal_deltaTime(OS.scheduledjobs->deadline)) <= 0 ) {
+//          hal_awake(); // no sleep to brooklyn
           j = OS.scheduledjobs;
           OS.scheduledjobs = j->next;
           #if defined(LMIC_DEBUG_LEVEL)

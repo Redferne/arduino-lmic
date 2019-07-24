@@ -26,12 +26,20 @@
 // to interrupt capable pins on your AVR/ARM.
 #define LMIC_INTERRUPTS 1
 
+// Set this to 1 to enable the use of total_slept_us for adjusting the
+// LMIC internal clock while CPU was sleeping.
+#define LMIC_ADVANCE_MILLIS 1
+
+// Set this to 1 to enable the use of watchdog sleep for short periods,
+// example RX1 & RX2 window.
+//#define LMIC_WATCHDOG_SLEEP 1
+
 // Set this to 1 to enable some basic debug output (using printf) about
 // RF settings used during transmission and reception. Set to 2 to
 // enable more verbose output. Make sure that printf is actually
 // configured (e.g. on AVR it is not by default), otherwise using it can
 // cause crashing.
-//#define LMIC_DEBUG_LEVEL 3
+//#define LMIC_DEBUG_LEVEL 1
 
 // Enable this to allow using printf() to print to the given serial port
 // (or any other Print object). This can be easy for debugging. The

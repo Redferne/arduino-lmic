@@ -42,7 +42,7 @@
 #endif
 
 // Special APIs - for development or testing
-#define isTESTMODE() 0
+#define isTESTMODE() 1
 
 DEFINE_LMIC;
 
@@ -955,6 +955,7 @@ static ostime_t nextJoinState (void) {
 
 
 static void runEngineUpdate (xref2osjob_t osjob) {
+    ON_LMIC_EVENT(EV_OP_MODE);
     engineUpdate();
 }
 
@@ -1324,8 +1325,9 @@ static bit_t decodeFrame (void) {
         LMIC.adrAckReq = LINK_CHECK_INIT;
 
     // Process OPTS
-    int m = LMIC.rssi - RSSI_OFF - getSensitivity(LMIC.rps);
-    LMIC.margin = m < 0 ? 0 : m > 254 ? 254 : m;
+    //int m = LMIC.rssi - RSSI_OFF - getSensitivity(LMIC.rps);
+    int m = LMIC.snr / 4;
+    LMIC.margin = m < -32 ? -32 : m > 31 ? 31 : m;
 
     xref2u1_t opts = &d[OFF_DAT_OPTS];
     LMIC.mcmd |= parseMacCommands(opts, olen);

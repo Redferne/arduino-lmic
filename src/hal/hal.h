@@ -27,7 +27,7 @@ const u1_t LMIC_UNUSED_PIN = 0xff;
 // Declared here, to be defined an initialized by the application
 extern const lmic_pinmap lmic_pins;
 
-extern uint8_t pbatt;
+extern uint8_t batt_pcnt;
 
 extern bool lmic_idle;
 extern uint32_t total_slept_us;
